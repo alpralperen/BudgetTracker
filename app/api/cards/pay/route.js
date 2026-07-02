@@ -24,12 +24,11 @@ export async function POST(request) {
     const card = updateResult.rows[0];
 
     // 2. Harcamalar tablosuna (geçmişe) ödeme olarak ekle
-    // Not: Harici ödeme olduğu için cüzdandan düşmüyoruz
     const expenseTitle = `${card.name} - Kart Borcu Ödemesi`;
     await query(
-      `INSERT INTO expenses (title, amount, payment_method, card_id) 
-       VALUES ($1, $2, $3, $4)`,
-      [expenseTitle, payAmount, 'Kredi Kartı Ödemesi', card_id]
+      `INSERT INTO expenses (title, amount, payment_method, date) 
+       VALUES ($1, $2, $3, CURRENT_DATE)`,
+      [expenseTitle, payAmount, 'Kredi Kartı Ödemesi']
     );
 
     return NextResponse.json({ success: true, data: card });
