@@ -9,13 +9,12 @@ export async function POST(request) {
 
     if (pin === validPin) {
       const response = NextResponse.json({ success: true });
-      // Set HTTP-only cookie
+      // Set HTTP-only session cookie (expires when browser closes)
       response.cookies.set({
         name: 'auth_session',
         value: 'authenticated',
         httpOnly: true,
         path: '/',
-        maxAge: 60 * 60 * 24 * 7, // 1 week
         sameSite: 'lax',
       });
       return response;
