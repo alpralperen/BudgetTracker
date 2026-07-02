@@ -11,7 +11,7 @@ export async function POST(request) {
       const response = NextResponse.json({ success: true });
       // Set HTTP-only session cookie (expires when browser closes)
       response.cookies.set({
-        name: 'auth_session',
+        name: 'app_auth_token',
         value: 'authenticated',
         httpOnly: true,
         path: '/',

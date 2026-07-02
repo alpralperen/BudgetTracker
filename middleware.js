@@ -14,7 +14,7 @@ export function middleware(request) {
   }
 
   // Check for auth cookie
-  const authCookie = request.cookies.get('auth_session');
+  const authCookie = request.cookies.get('app_auth_token');
 
   if (!authCookie || authCookie.value !== 'authenticated') {
     return NextResponse.redirect(new URL('/login', request.url));

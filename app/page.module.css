@@ -10,9 +10,47 @@
 }
 
 .greeting {
-  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.helloText {
+  font-size: 0.8rem;
   color: var(--text-light-theme-sub);
-  margin-bottom: 0.25rem;
+}
+
+.userName {
+  font-weight: 700;
+  color: var(--text-light-theme-main);
+  font-size: 1rem;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary-teal);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.menuBtn {
+  background: none;
+  border: none;
+  color: var(--text-light-theme-sub);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .title {
