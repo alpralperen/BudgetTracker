@@ -12,7 +12,13 @@ export default function Home() {
   
   // Edit Cash Modal State
   const [showCashModal, setShowCashModal] = useState(false);
+  const [showAddExpense, setShowAddExpense] = useState(false);
   const [cashInput, setCashInput] = useState('');
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -30,6 +36,70 @@ export default function Home() {
     }
     fetchData();
   }, []);
+
+  const handleAddExpense = async () => {
+    if (!title || !amount || !paymentMethod) {
+      alert('Lütfen tüm alanları doldurun.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          amount: parseFloat(amount),
+          payment_method: paymentMethod
+        })
+      });
+
+      if (res.ok) {
+        setTitle('');
+        setAmount('');
+        setPaymentMethod('');
+        setShowAddExpense(false);
+        // Refresh data
+        const refreshRes = await fetch('/api/dashboard');
+        const json = await refreshRes.json();
+        if (json.success) setData(json.data);
+      } else {
+        alert('Harcama eklenemedi.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Harcama eklenemedi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteExpense = async (id) => {
+    if (!confirm('Bu harcamayı silmek istediğinize emin misiniz? Bakiye/borç işlemleriniz geri alınacaktır.')) return;
+    
+    setDeletingId(id);
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+
+      if (res.ok) {
+        // Refresh data
+        const refreshRes = await fetch('/api/dashboard');
+        const json = await refreshRes.json();
+        if (json.success) setData(json.data);
+      } else {
+        alert('Harcama silinemedi.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Silme sırasında hata oluştu.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleUpdateCash = async () => {
     try {
@@ -174,29 +244,42 @@ export default function Home() {
         </div>
 
         <div className={styles.expenseList}>
-          {recentExpenses.map((exp, idx) => {
-            const isCash = exp.payment_method === 'Nakit';
-            const iconBg = isCash ? '#EAF7F4' : '#E8F1FA';
-            const iconCol = isCash ? '#38B294' : '#1D5C96';
-            
-            return (
-              <div key={exp.id || idx} className={styles.expenseItem}>
-                <div className={styles.expenseIcon} style={{ backgroundColor: iconBg, color: iconCol }}>
-                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                  </svg>
+          {recentExpenses.map(expense => (
+            <div key={expense.id} className={styles.expenseItem}>
+              <div className={styles.expenseIcon} style={{ backgroundColor: '#FBE9E7', color: '#D84315' }}>
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div className={styles.expenseDetails}>
+                <div className={styles.expenseName}>{expense.title}</div>
+                <div className={styles.expenseSource}>{expense.card_name || expense.payment_method}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <div className={styles.expenseAmount}>
+                  -{Number(expense.amount).toLocaleString('tr-TR')} TL
                 </div>
-                <div className={styles.expenseDetails}>
-                  <div className={styles.expenseName}>{exp.title}</div>
-                  <div className={styles.expenseSource}>{exp.card_name || 'Nakit'}</div>
-                </div>
-                <div>
-                  <div className={styles.expenseAmount}>{Number(exp.amount).toLocaleString('tr-TR')} TL</div>
-                  <div className={styles.expenseDate}>Bugün</div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span className={styles.expenseDate}>
+                    {new Date(expense.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                  </span>
+                  <button 
+                    onClick={() => handleDeleteExpense(expense.id)}
+                    disabled={deletingId === expense.id}
+                    style={{ 
+                      background: 'none', border: 'none', color: '#EF4444', 
+                      cursor: 'pointer', padding: '0.1rem', opacity: deletingId === expense.id ? 0.5 : 1
+                    }}
+                    title="Harcamayı Sil"
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </section>
       
