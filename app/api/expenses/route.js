@@ -27,24 +27,37 @@ export async function POST(request) {
 
     const expenseDate = date || new Date().toISOString().split('T')[0];
 
-    // Transaction logic to also update card if payment_method is a UUID (card ID)
-    // We'll use a simple approach: if payment_method != 'Nakit', try to update card
-    
     let isCard = payment_method !== 'Nakit';
 
     if (isCard) {
-      // Update card first
+      // 1. Kart borcunu güncelle
       await query(
         `UPDATE cards SET current_debt = current_debt + $1 WHERE id = $2`,
         [amount, payment_method]
       );
-    }
 
-    const result = await query(
-      `INSERT INTO expenses (title, amount, payment_method, date) 
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [title, amount, payment_method, expenseDate]
-    );
+      // 2. Harcamayı ekle
+      result = await query(
+        `INSERT INTO expenses (title, amount, payment_method, date) 
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [title, amount, payment_method, expenseDate]
+      );
+    } else { // Nakit
+      // Nakit ise cüzdandan (wallet) düş
+      const checkResult = await query('SELECT id FROM wallet LIMIT 1');
+      if (checkResult.rowCount > 0) {
+        await query('UPDATE wallet SET balance = balance - $1 WHERE id = $2', [amount, checkResult.rows[0].id]);
+      } else {
+        // Cüzdan yoksa eksi bakiye ile oluştur
+        await query('INSERT INTO wallet (balance) VALUES ($1)', [-parseFloat(amount)]);
+      }
+
+      result = await query(
+        `INSERT INTO expenses (title, amount, payment_method, date) 
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [title, amount, 'Nakit', expenseDate]
+      );
+    }
 
     return NextResponse.json({ success: true, data: result.rows[0] });
   } catch (error) {

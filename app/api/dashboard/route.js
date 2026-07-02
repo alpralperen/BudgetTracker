@@ -3,39 +3,55 @@ import { query } from '@/lib/db';
 
 export async function GET() {
   try {
-    // 1. Current Month Total Expenses
-    const currentMonthResult = await query(`
+    // 1. Toplam harcamaları al (bu ay)
+    const expensesResult = await query(`
       SELECT SUM(amount) as total 
       FROM expenses 
-      WHERE EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM CURRENT_DATE)
+      WHERE date_trunc('month', date) = date_trunc('month', CURRENT_DATE)
     `);
-    const totalExpenses = parseFloat(currentMonthResult.rows[0]?.total || 0);
+    const totalExpenses = expensesResult.rows[0].total || 0;
 
-    // 2. Cards
-    const cardsResult = await query('SELECT * FROM cards ORDER BY created_at ASC');
-    const cards = cardsResult.rows;
+    // 2. Kartları al
+    const cardsResult = await query(`
+      SELECT * FROM cards ORDER BY created_at ASC
+    `);
 
-    // 3. Recent Expenses
-    const expensesResult = await query(`
+    // 3. Nakit bakiyesini al
+    let walletBalance = 0;
+    try {
+      const walletResult = await query('SELECT balance FROM wallet LIMIT 1');
+      if (walletResult.rowCount > 0) {
+        walletBalance = walletResult.rows[0].balance;
+      }
+    } catch(e) {
+      // Wallet table might not exist yet
+    }
+
+    // 4. Son harcamaları al
+    const recentExpensesResult = await query(`
       SELECT e.*, c.name as card_name 
       FROM expenses e
       LEFT JOIN cards c ON e.payment_method = c.id::text
       ORDER BY e.date DESC, e.created_at DESC
       LIMIT 5
     `);
-    const recentExpenses = expensesResult.rows;
 
-    return NextResponse.json({
-      success: true,
+    // Dinamik bütçe = Nakit + Kart Limitleri Toplamı
+    const totalCardLimit = cardsResult.rows.reduce((sum, card) => sum + Number(card.limit), 0);
+    const monthlyBudget = Number(walletBalance) + totalCardLimit;
+
+    return NextResponse.json({ 
+      success: true, 
       data: {
         totalExpenses,
-        cards,
-        recentExpenses
+        cards: cardsResult.rows,
+        recentExpenses: recentExpensesResult.rows,
+        walletBalance,
+        monthlyBudget
       }
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('Dashboard Error:', error);
     return NextResponse.json({ success: false, message: 'Veriler alınamadı' }, { status: 500 });
   }
 }

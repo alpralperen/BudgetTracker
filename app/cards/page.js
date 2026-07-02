@@ -21,6 +21,9 @@ export default function Cards() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [editDebtValue, setEditDebtValue] = useState('');
 
+  // Accordion State
+  const [expandedCardId, setExpandedCardId] = useState(null);
+
   useEffect(() => {
     fetchCards();
   }, []);
@@ -96,8 +99,6 @@ export default function Cards() {
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Yükleniyor...</div>;
 
-  const mainCard = cards[0]; // Just showing the first one as detailed for the design layout
-
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -106,7 +107,7 @@ export default function Cards() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <h1 className={styles.title}>Kart Detayı</h1>
+        <h1 className={styles.title}>Kartlarım</h1>
         <button className={styles.menuBtn}>
           <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
@@ -114,92 +115,123 @@ export default function Cards() {
         </button>
       </header>
 
-      {mainCard ? (
-        <>
-          <div className={styles.mainCardDetail}>
-            <div className={styles.cardHeader}>
-              <svg className={styles.cardIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              <div className={styles.cardName}>{mainCard.name}</div>
-            </div>
-            
-            <div className={styles.cardStats}>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>Limit</span>
-                <span className={styles.statValue}>{Number(mainCard.limit).toLocaleString('tr-TR')} TL</span>
-              </div>
-              <div className={styles.statItem} style={{ textAlign: 'right' }}>
-                <span className={styles.statLabel}>Güncel Borç</span>
-                {editingCardId === mainCard.id ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                    <input 
-                      type="number" 
-                      value={editDebtValue} 
-                      onChange={e => setEditDebtValue(e.target.value)}
-                      style={{ width: '80px', padding: '0.25rem', borderRadius: '4px', border: 'none', color: '#000' }}
-                      autoFocus
-                    />
-                    <button onClick={() => handleUpdateDebt(mainCard.id)} style={{ background: '#38B294', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>✓</button>
-                    <button onClick={() => setEditingCardId(null)} style={{ background: '#ccc', color: '#333', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>✕</button>
+      {cards.length === 0 ? (
+        <div style={{ textAlign: 'center', margin: '2rem 0', color: 'var(--text-light-theme-sub)' }}>
+          Hiç kartınız yok, aşağıdan ekleyebilirsiniz.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+          {cards.map(card => {
+            const isExpanded = expandedCardId === card.id;
+
+            return (
+              <div 
+                key={card.id} 
+                style={{ 
+                  background: 'white', 
+                  borderRadius: '16px', 
+                  border: '1px solid var(--border-color)', 
+                  overflow: 'hidden',
+                  transition: 'all 0.3s ease',
+                  boxShadow: isExpanded ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+                }}
+              >
+                {/* Closed Header Section */}
+                <div 
+                  onClick={() => setExpandedCardId(isExpanded ? null : card.id)}
+                  style={{ 
+                    padding: '1.25rem', display: 'flex', justifyContent: 'space-between', 
+                    alignItems: 'center', cursor: 'pointer' 
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ 
+                      width: '40px', height: '40px', borderRadius: '50%', 
+                      background: 'var(--bg-light)', display: 'flex', 
+                      justifyContent: 'center', alignItems: 'center', color: 'var(--primary-teal)'
+                    }}>
+                      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-light-theme-main)' }}>{card.name}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-light-theme-sub)' }}>
+                        Kalan: {Number(card.limit - card.current_debt).toLocaleString()} TL
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <span className={styles.statValue}>{Number(mainCard.current_debt).toLocaleString('tr-TR')} TL</span>
-                    <button onClick={() => { setEditingCardId(mainCard.id); setEditDebtValue(mainCard.current_debt); }} style={{ color: 'rgba(255,255,255,0.7)' }}>
-                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                    </button>
+                  <div>
+                    <svg 
+                      width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      style={{ 
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', 
+                        transition: 'transform 0.3s ease', color: 'var(--text-light-theme-sub)'
+                      }}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Expanded Details Section */}
+                {isExpanded && (
+                  <div style={{ padding: '0 1.25rem 1.25rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-light-theme-sub)', marginBottom: '0.25rem' }}>Toplam Limit</div>
+                        <div style={{ fontWeight: 600 }}>{Number(card.limit).toLocaleString('tr-TR')} TL</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-light-theme-sub)', marginBottom: '0.25rem' }}>Asgari Ödeme</div>
+                        <div style={{ fontWeight: 600 }}>{(card.current_debt * 0.2).toLocaleString('tr-TR')} TL</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-light-theme-sub)', marginBottom: '0.25rem' }}>Hesap Kesim</div>
+                        <div style={{ fontWeight: 600 }}>{card.statement_day}. Gün</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-light-theme-sub)', marginBottom: '0.25rem' }}>Son Ödeme</div>
+                        <div style={{ fontWeight: 600 }}>{card.due_day}. Gün</div>
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-light)', padding: '1rem', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Güncel Borç</span>
+                        {editingCardId === card.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="number" 
+                              value={editDebtValue} 
+                              onChange={e => setEditDebtValue(e.target.value)}
+                              style={{ width: '80px', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', color: '#000' }}
+                              autoFocus
+                            />
+                            <button onClick={() => handleUpdateDebt(card.id)} style={{ background: 'var(--primary-teal)', color: 'white', padding: '0.5rem', borderRadius: '8px' }}>✓</button>
+                            <button onClick={() => setEditingCardId(null)} style={{ background: '#ccc', color: '#333', padding: '0.5rem', borderRadius: '8px' }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontWeight: 700, color: '#D9455F' }}>{Number(card.current_debt).toLocaleString('tr-TR')} TL</span>
+                            <button 
+                              onClick={() => { setEditingCardId(card.id); setEditDebtValue(card.current_debt); }} 
+                              style={{ color: 'var(--primary-teal)', padding: '0.2rem' }}
+                            >
+                              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-
-          <div className={styles.detailsGrid}>
-            <div className={styles.detailBox}>
-              <div className={styles.boxHeader}>
-                <span className={styles.boxTitle}>Kullanılabilir Limit</span>
-                <svg className={styles.boxIcon} width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <span className={styles.boxValue}>{(mainCard.limit - mainCard.current_debt).toLocaleString('tr-TR')} TL</span>
-            </div>
-
-            <div className={styles.detailBox}>
-              <div className={styles.boxHeader}>
-                <span className={styles.boxTitle}>Asgari Ödeme</span>
-                <svg className={styles.boxIcon} width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className={styles.boxValue}>{(mainCard.current_debt * 0.2).toLocaleString('tr-TR')} TL</span>
-              <span className={styles.boxSub}>%20</span>
-            </div>
-
-            <div className={styles.detailBox}>
-              <div className={styles.boxHeader}>
-                <span className={styles.boxTitle}>Hesap Kesim Tarihi</span>
-                <svg className={styles.boxIcon} width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className={styles.boxValue}>{mainCard.statement_day} Her Ay</span>
-            </div>
-
-            <div className={styles.detailBox}>
-              <div className={styles.boxHeader}>
-                <span className={styles.boxTitle}>Son Ödeme Tarihi</span>
-                <svg className={styles.boxIcon} width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className={styles.boxValue}>{mainCard.due_day} Her Ay</span>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div style={{ textAlign: 'center', margin: '2rem 0' }}>Hiç kartınız yok, aşağıdan ekleyebilirsiniz.</div>
+            );
+          })}
+        </div>
       )}
 
       {showAddForm ? (
@@ -274,46 +306,6 @@ export default function Cards() {
         >
           + Yeni Kart Ekle
         </button>
-      )}
-
-      {/* List of other cards could go here, but for now we follow the "Kart Detayı" design for the first one */}
-      {cards.length > 1 && (
-        <div style={{ marginTop: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>Diğer Kartlarınız</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {cards.slice(1).map(card => (
-              <div key={card.id} style={{ background: 'white', padding: '1rem', borderRadius: '16px', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 600 }}>{card.name}</div>
-                  {editingCardId === card.id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <input 
-                        type="number" 
-                        value={editDebtValue} 
-                        onChange={e => setEditDebtValue(e.target.value)}
-                        style={{ width: '80px', padding: '0.25rem', borderRadius: '4px', border: '1px solid #ccc' }}
-                        autoFocus
-                      />
-                      <button onClick={() => handleUpdateDebt(card.id)} style={{ background: '#38B294', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>✓</button>
-                      <button onClick={() => setEditingCardId(null)} style={{ background: '#eee', color: '#333', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>✕</button>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-light-theme-sub)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      Güncel Borç: {Number(card.current_debt).toLocaleString()} TL
-                      <button onClick={() => { setEditingCardId(card.id); setEditDebtValue(card.current_debt); }} style={{ color: 'var(--primary-teal)' }}>
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div style={{ textAlign: 'right', fontSize: '0.85rem' }}>
-                  <div style={{ color: 'var(--text-light-theme-sub)' }}>Limit</div>
-                  <div style={{ fontWeight: 600 }}>{Number(card.limit).toLocaleString()} TL</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       <div style={{ height: '40px' }}></div>

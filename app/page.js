@@ -5,9 +5,12 @@ import Link from 'next/link';
 import styles from './page.module.css';
 
 export default function Home() {
-  const [data, setData] = useState({ totalExpenses: 0, cards: [], recentExpenses: [] });
+  const [data, setData] = useState({ totalExpenses: 0, cards: [], recentExpenses: [], walletBalance: 0, monthlyBudget: 0 });
   const [loading, setLoading] = useState(true);
-  const monthlyBudget = 30000; // Static mock for now
+  
+  // Edit Cash Modal State
+  const [showCashModal, setShowCashModal] = useState(false);
+  const [cashInput, setCashInput] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -26,12 +29,32 @@ export default function Home() {
     fetchData();
   }, []);
 
+  const handleUpdateCash = async () => {
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance: cashInput })
+      });
+      if (res.ok) {
+        setShowCashModal(false);
+        // Refresh data
+        const refreshRes = await fetch('/api/dashboard');
+        const json = await refreshRes.json();
+        if (json.success) setData(json.data);
+      }
+    } catch(e) {
+      console.error(e);
+      alert('Nakit güncellenemedi');
+    }
+  };
+
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Yükleniyor...</div>;
   }
 
-  const { totalExpenses, cards, recentExpenses } = data;
-  const budgetPercentage = Math.min(Math.round((totalExpenses / monthlyBudget) * 100), 100);
+  const { totalExpenses, cards, recentExpenses, walletBalance, monthlyBudget } = data;
+  const budgetPercentage = monthlyBudget > 0 ? Math.min(Math.round((totalExpenses / monthlyBudget) * 100), 100) : 0;
 
   const getCardStyle = (name) => {
     if (name.toLowerCase().includes('iş bankası')) return { bg: '#1D5C96', iconBg: '#E8F1FA', iconCol: '#1D5C96' };
@@ -102,24 +125,25 @@ export default function Home() {
                   <div className={styles.cardLimit}>Limit: {Number(card.limit).toLocaleString('tr-TR')} TL</div>
                 </div>
                 <div className={styles.cardBalances}>
-                  <div className={styles.cardDebt}>{Number(card.current_debt).toLocaleString('tr-TR')} TL</div>
-                  <div className={styles.cardDate}>Son Ödeme: {card.due_day} Haz</div>
+                  <div className={styles.cardDebt}>Kalan: {Number(card.limit - card.current_debt).toLocaleString('tr-TR')} TL</div>
+                  <div className={styles.cardDate}>Son Ödeme: {card.due_day} Her Ay</div>
                 </div>
               </div>
             );
           })}
           
-          <div className={styles.bankCard}>
+          <div className={styles.bankCard} onClick={() => { setCashInput(walletBalance); setShowCashModal(true); }} style={{ cursor: 'pointer' }}>
             <div className={styles.cardIcon} style={{ backgroundColor: '#EAF7F4', color: '#38B294' }}>
               <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div className={styles.cardDetails}>
-              <div className={styles.cardName}>Nakit</div>
+              <div className={styles.cardName}>Nakit Cüzdanı</div>
+              <div className={styles.cardLimit} style={{ color: '#38B294' }}>Düzenlemek için tıkla</div>
             </div>
             <div className={styles.cardBalances}>
-              <div className={styles.cardDebt}>-</div>
+              <div className={styles.cardDebt}>{Number(walletBalance).toLocaleString('tr-TR')} TL</div>
             </div>
           </div>
         </div>
@@ -158,6 +182,45 @@ export default function Home() {
         </div>
       </section>
       
+      {showCashModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', 
+          justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--card-light)', padding: '2rem', 
+            borderRadius: '24px', width: '90%', maxWidth: '400px'
+          }}>
+            <h3 style={{ marginBottom: '1rem' }}>Nakit Bakiye Düzenle</h3>
+            <input 
+              type="number"
+              value={cashInput}
+              onChange={e => setCashInput(e.target.value)}
+              style={{
+                width: '100%', padding: '1rem', border: '1px solid var(--border-color)',
+                borderRadius: '12px', marginBottom: '1rem', fontSize: '1.1rem', color: '#000'
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowCashModal(false)}
+                style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: '#eee', color: '#333', fontWeight: '600' }}
+              >
+                İptal
+              </button>
+              <button 
+                onClick={handleUpdateCash}
+                style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'var(--primary-teal)', color: '#fff', fontWeight: '600' }}
+              >
+                Kaydet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ height: '40px' }}></div>
     </div>
   );
