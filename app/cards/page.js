@@ -12,6 +12,7 @@ export default function Cards() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
   const [limit, setLimit] = useState('');
+  const [currentDebt, setCurrentDebt] = useState('0');
   const [statementDay, setStatementDay] = useState(5);
   const [dueDay, setDueDay] = useState(15);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +48,7 @@ export default function Cards() {
         body: JSON.stringify({
           name,
           limit: parseFloat(limit),
+          current_debt: parseFloat(currentDebt) || 0,
           statement_day: parseInt(statementDay),
           due_day: parseInt(dueDay)
         })
@@ -54,6 +56,7 @@ export default function Cards() {
       if (res.ok) {
         setName('');
         setLimit('');
+        setCurrentDebt('0');
         setShowAddForm(false);
         fetchCards();
       }
@@ -167,15 +170,27 @@ export default function Cards() {
               placeholder="Örn: İş Bankası Kredi Kartı" 
             />
           </div>
-          <div className={styles.formGroup}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Limit (TL)</label>
-            <input 
-              type="number" 
-              className={styles.input} 
-              value={limit} 
-              onChange={e => setLimit(e.target.value)} 
-              placeholder="Örn: 25000" 
-            />
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className={styles.formGroup} style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Limit (TL)</label>
+              <input 
+                type="number" 
+                className={styles.input} 
+                value={limit} 
+                onChange={e => setLimit(e.target.value)} 
+                placeholder="Örn: 25000" 
+              />
+            </div>
+            <div className={styles.formGroup} style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Güncel Borç (TL)</label>
+              <input 
+                type="number" 
+                className={styles.input} 
+                value={currentDebt} 
+                onChange={e => setCurrentDebt(e.target.value)} 
+                placeholder="Örn: 1500" 
+              />
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem' }}>
             <div className={styles.formGroup} style={{ flex: 1 }}>
