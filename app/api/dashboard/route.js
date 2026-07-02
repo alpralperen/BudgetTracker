@@ -3,11 +3,12 @@ import { query } from '@/lib/db';
 
 export async function GET() {
   try {
-    // 1. Toplam harcamaları al (bu ay)
+    // 1. Toplam harcamaları al (bu ay) - Ödemeler harcama sayılmaz
     const expensesResult = await query(`
       SELECT SUM(amount) as total 
       FROM expenses 
       WHERE date_trunc('month', date) = date_trunc('month', CURRENT_DATE)
+      AND payment_method != 'Kredi Kartı Ödemesi'
     `);
     const totalExpenses = expensesResult.rows[0].total || 0;
 

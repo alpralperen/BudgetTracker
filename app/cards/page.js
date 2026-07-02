@@ -21,6 +21,11 @@ export default function Cards() {
   const [editingCardId, setEditingCardId] = useState(null);
   const [editDebtValue, setEditDebtValue] = useState('');
 
+  // Pay Card State
+  const [payingCardId, setPayingCardId] = useState(null);
+  const [payAmount, setPayAmount] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
+
   // Accordion State
   const [expandedCardId, setExpandedCardId] = useState(null);
 
@@ -97,7 +102,39 @@ export default function Cards() {
     }
   };
 
+  const handlePayDebt = async () => {
+    if (!payAmount || Number(payAmount) <= 0) {
+      alert('Lütfen geçerli bir tutar girin.');
+      return;
+    }
+    setIsPaying(true);
+    try {
+      const res = await fetch('/api/cards/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          card_id: payingCardId,
+          amount: parseFloat(payAmount)
+        })
+      });
+      if (res.ok) {
+        setPayingCardId(null);
+        setPayAmount('');
+        fetchCards();
+      } else {
+        alert('Ödeme gerçekleştirilemedi.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Bir hata oluştu.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Yükleniyor...</div>;
+
+  const currentDay = new Date().getDate();
 
   return (
     <div className={styles.page}>
@@ -123,6 +160,8 @@ export default function Cards() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
           {cards.map(card => {
             const isExpanded = expandedCardId === card.id;
+            const statementCut = currentDay >= card.statement_day;
+            const dueWarning = currentDay > card.statement_day && currentDay <= card.due_day;
 
             return (
               <div 
@@ -155,13 +194,20 @@ export default function Cards() {
                       </svg>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-light-theme-main)' }}>{card.name}</div>
+                      <div style={{ fontWeight: 600, fontSize: '1.05rem', color: 'var(--text-light-theme-main)' }}>
+                        {card.name}
+                      </div>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-light-theme-sub)' }}>
                         Kalan: {Number(card.limit - card.current_debt).toLocaleString()} TL
                       </div>
                     </div>
                   </div>
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {!isExpanded && statementCut && Number(card.current_debt) > 0 && (
+                      <span style={{ fontSize: '0.75rem', background: dueWarning ? '#FFF3E0' : '#E8F1FA', color: dueWarning ? '#E65100' : '#1D5C96', padding: '0.2rem 0.5rem', borderRadius: '8px', fontWeight: 600 }}>
+                        Ekstre Kesildi
+                      </span>
+                    )}
                     <svg 
                       width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                       style={{ 
@@ -225,6 +271,23 @@ export default function Cards() {
                           </div>
                         )}
                       </div>
+
+                      {/* Pay Button */}
+                      {Number(card.current_debt) > 0 && (
+                        <button 
+                          onClick={() => setPayingCardId(card.id)}
+                          style={{
+                            width: '100%', marginTop: '1rem', padding: '0.75rem',
+                            background: '#1D5C96', color: 'white', borderRadius: '12px',
+                            fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem'
+                          }}
+                        >
+                          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          Kart Borcu Öde
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -306,6 +369,74 @@ export default function Cards() {
         >
           + Yeni Kart Ekle
         </button>
+      )}
+
+      {/* Pay Card Modal */}
+      {payingCardId && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', 
+          justifyContent: 'center', alignItems: 'center', zIndex: 1000
+        }}>
+          <div style={{
+            background: 'var(--card-light)', padding: '2rem', 
+            borderRadius: '24px', width: '90%', maxWidth: '400px'
+          }}>
+            <h3 style={{ marginBottom: '1rem' }}>Ödeme Tutarı Girin</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-light-theme-sub)', marginBottom: '1rem' }}>
+              Bu tutar güncel kart borcunuzdan düşülecek ve harcama geçmişinize "Kart Borcu Ödemesi" olarak eklenecektir.
+            </p>
+            <input 
+              type="number"
+              value={payAmount}
+              onChange={e => setPayAmount(e.target.value)}
+              placeholder="Örn: 2500"
+              style={{
+                width: '100%', padding: '1rem', border: '1px solid var(--border-color)',
+                borderRadius: '12px', marginBottom: '1rem', fontSize: '1.1rem', color: '#000'
+              }}
+              autoFocus
+            />
+            
+            {/* Quick buttons */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <button 
+                onClick={() => {
+                  const card = cards.find(c => c.id === payingCardId);
+                  if(card) setPayAmount(card.current_debt * 0.2);
+                }}
+                style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', fontWeight: 600 }}
+              >
+                Asgari Öde
+              </button>
+              <button 
+                onClick={() => {
+                  const card = cards.find(c => c.id === payingCardId);
+                  if(card) setPayAmount(card.current_debt);
+                }}
+                style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', fontWeight: 600 }}
+              >
+                Tamamını Öde
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={() => { setPayingCardId(null); setPayAmount(''); }}
+                style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: '#eee', color: '#333', fontWeight: '600' }}
+              >
+                İptal
+              </button>
+              <button 
+                onClick={handlePayDebt}
+                disabled={isPaying}
+                style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'var(--primary-teal)', color: '#fff', fontWeight: '600' }}
+              >
+                {isPaying ? 'Ödeniyor...' : 'Öde'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div style={{ height: '40px' }}></div>
