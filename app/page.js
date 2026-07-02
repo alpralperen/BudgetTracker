@@ -53,8 +53,8 @@ export default function Home() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Yükleniyor...</div>;
   }
 
-  const { totalExpenses, cards, recentExpenses, walletBalance, monthlyBudget } = data;
-  const budgetPercentage = monthlyBudget > 0 ? Math.min(Math.round((totalExpenses / monthlyBudget) * 100), 100) : 0;
+  const { totalExpenses, cards, recentExpenses, walletBalance, monthlyBudget, totalDebt } = data;
+  const budgetPercentage = monthlyBudget > 0 ? Math.min(Math.round((totalDebt / monthlyBudget) * 100), 100) : 0;
 
   const getCardStyle = (name) => {
     if (name.toLowerCase().includes('iş bankası')) return { bg: '#1D5C96', iconBg: '#E8F1FA', iconCol: '#1D5C96' };

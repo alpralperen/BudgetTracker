@@ -38,6 +38,7 @@ export async function GET() {
 
     // Dinamik bütçe = Nakit + Kart Limitleri Toplamı
     const totalCardLimit = cardsResult.rows.reduce((sum, card) => sum + Number(card.limit), 0);
+    const totalDebt = cardsResult.rows.reduce((sum, card) => sum + Number(card.current_debt), 0);
     const monthlyBudget = Number(walletBalance) + totalCardLimit;
 
     return NextResponse.json({ 
@@ -47,7 +48,8 @@ export async function GET() {
         cards: cardsResult.rows,
         recentExpenses: recentExpensesResult.rows,
         walletBalance,
-        monthlyBudget
+        monthlyBudget,
+        totalDebt
       }
     });
   } catch (error) {
